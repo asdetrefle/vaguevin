@@ -1,0 +1,191 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% trans "Wine Inventory" %}</title>
+    <style>
+        body {
+            font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+            background: #e8e8e8;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            padding: 16px 24px;
+            border-top: 2px solid #e0e0e0;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;        /* space between language switcher and logout */
+            flex-wrap: nowrap; /* prevent stacking */
+        }
+
+        .lang-select {
+            width: 120px;       /* adjust width to fit nicely */
+            padding: 4px 6px;
+            font-size: 14px;
+        }
+        .header h2 { margin: 0; font-weight: 600; font-size: 20px; color: #333; }
+
+        .tabs {
+            display: inline-flex;
+            gap: 12px;
+            margin-left: 16px;
+        }
+
+        .tab {
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+            background: #f5f5f5;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .tab:hover {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .tab.active {
+            background: #007bff;
+            color: #fff;
+        }
+
+        .filters {
+            position: sticky;
+            top: 64px; /* or whatever your header height actually is */
+            z-index: 15;
+            background: #e8e8e8;
+            padding: 8px 24px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .filter-input, .filter-select {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            text-decoration: none; background: #d9534f; color: #fff;
+            padding: 6px 14px; border-radius: 4px; font-size: 14px;
+            transition: background 0.2s;
+        }
+        .logout-btn:hover { background: #c9302c; }
+
+        /* ===== Table ===== */
+        .table-container {
+            padding: 0 24px 24px 24px;
+            margin-top: 8px;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        thead {
+            position: sticky;
+            top: 0; /* 👈 let it stick directly under the header & filters */
+            z-index: 10;
+            background: #f8f9fa;
+            box-shadow: 0 -2px 0 #f8f9fa; /* hides any tiny table row peek */
+        }
+        thead th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        thead th.sort-asc::after { content: " ▲"; }
+        thead th.sort-desc::after { content: " ▼"; }
+
+        th, td { padding: 10px 8px; text-align: left; font-size: 13px; }
+        td { border-bottom: 1px solid #f1f1f1; color: #555; }
+        tr:hover td { background: #f5f7fa; }
+        .empty-row { text-align: center; color: #777; padding: 20px; }
+
+        /* ===== Footer Bar ===== */
+        .footer-bar {
+            position: fixed;
+            bottom: -80px;
+            left: 0; right: 0;
+            background: #ffffff;
+            border-top: 1px solid #e0e0e0;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+            transition: bottom 0.3s ease;
+        }
+        .footer-bar.visible { bottom: 0; }
+        .export-btn {
+            background: #007bff; color: white; padding: 8px 16px;
+            font-size: 14px; border-radius: 4px; text-decoration: none;
+            border: none; cursor: pointer;
+        }
+        .export-btn:disabled { background: #b0c4de; cursor: not-allowed; }
+
+        .row-select { text-align: right; width: 100px; white-space: nowrap; }
+        .wine-qty { width: 50px; display: none; margin-right: 4px; text-align: right; }
+    </style>
+
+    <!-- 🔹 Page-specific styles --> 
+    {% block style %}{% endblock %}
+</head>
+<body>
+
+    <!-- ===== Header Bar ===== -->
+    <div class="header">
+        <div class="header-left">
+            <h2>🍷 {% trans "Wine Inventory" %}</h2>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <a href="{% url 'inventory_list' %}" class="tab {% block inventory_active %}{% endblock %}">Inventory</a>
+                <a href="{% url 'wine_list' %}" class="tab {% block winelist_active %}{% endblock %}">WineList</a>
+            </div>
+        </div>
+        <div class="header-right">
+            <!-- Language selector -->
+            <form action="{% url 'set_language' %}" method="get" class="lang-form">
+                <select name="lang" onchange="this.form.submit()" class="lang-select">
+                    <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>English</option>
+                    <option value="fr" {% if LANGUAGE_CODE == 'fr' %}selected{% endif %}>Français</option>
+                    <option value="zh" {% if LANGUAGE_CODE == 'zh' %}selected{% endif %}>中文</option>
+                </select>
+            </form>
+            <a href="{% url 'logout' %}" class="logout-btn">{% trans "Logout" %}</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>

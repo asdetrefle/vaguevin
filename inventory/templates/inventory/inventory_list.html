@@ -1,0 +1,361 @@
+{% extends "inventory/base.html" %}
+{% load i18n %}
+
+{% block title %}Inventory{% endblock %}
+
+{% block inventory_active %}active{% endblock %}
+
+{% block style %}
+<style>
+    .status-cell {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 500;
+        text-align: center;
+        transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .status-cell.in_bond {
+        background-color: #f0f0f5; /* light gray */
+        color: #333;
+    }
+
+    .status-cell.in_stock {
+        background-color: #d4edda; /* light green */
+        color: #155724;
+    }
+
+    .status-cell.reserved { 
+        background-color: #fff3cd; /* light yellow */
+        color: #856404;
+    }
+
+    .status-cell.sold {
+        background-color: #f8d7da; /* light red */
+        color: #721c24;
+    }
+
+    .status-cell.consumed {
+        background-color: #d1ecf1; /* light blue */
+        color: #0c5460;
+    }
+
+    .status-cell.other {
+        background-color: #e2e3e5; /* light gray */
+        color: #383d41;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 100;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        align-items: center; justify-content: center;
+    }
+    .modal-content {
+        background: #fff;
+        padding: 20px 28px;
+        border-radius: 8px;
+        width: 400px;
+        max-width: 90%;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .modal-content h3 { margin-top: 0; }
+    .modal-content label { display: block; margin-top: 10px; font-weight: 500; }
+    .modal-content input, .modal-content select {
+        width: 100%; padding: 6px 8px; margin-top: 4px;
+        border: 1px solid #ccc; border-radius: 4px;
+    }
+    .modal-buttons {
+        display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;
+    }
+    .modal-buttons button {
+        padding: 6px 12px;
+        border: none; border-radius: 4px; cursor: pointer;
+    }
+    .modal-buttons button[type="button"] { background: #ccc; }
+    .modal-buttons button[type="submit"] { background: #007bff; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ===== Filters ===== -->
+<div class="filters">
+    <input type="text" id="searchName" class="filter-input" placeholder="{% trans 'Search by name...' %}">
+    <select id="filterCategory" class="filter-select">
+        <option value="">{% trans "All Categories" %}</option>
+        {% for value, label in WineInventory.WINE_CATEGORY_CHOICES %}
+            <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- ===== Table ===== -->
+<div class="table-container">
+    <form id="wineForm" method="post" action="{% url 'export_wines' %}">
+        {% csrf_token %}
+        <table id="wineTable">
+            <thead>
+                <tr>
+                    <th data-column="name">{% trans "Name" %}</th>
+                    <th data-column="vintage">{% trans "Vintage" %}</th>
+                    <th data-column="category">{% trans "Category" %}</th>
+                    <th data-column="region">{% trans "Region" %}</th>
+                    <th data-column="bottle_size">{% trans "Bottle Size (cl)" %}</th>
+                    <th data-column="price">{% trans "Price (€)" %}</th>
+                    <th data-column="qty">{% trans "Quantity" %}</th>
+                    <th data-column="status">{% trans "Status" %}</th>
+                    <th class="row-select"><input type="checkbox" id="selectAll"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inventory in inventories %}
+                <tr>
+                    <td>{{ inventory.wine.name }}</td>
+                    <td>{{ inventory.wine.vintage|default:"—" }}</td>
+                    <td>{{ inventory.wine.get_category_display }}</td>
+                    <td>{{ inventory.wine.region|default:"—" }}</td>
+                    <td>{{ inventory.bottle_size|default:"—" }}</td>
+                    <td>
+                        {% if inventory.purchase_price %}
+                            {{ inventory.purchase_price|floatformat:0 }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>{{ inventory.qty }}</td>
+                    <td class="status-cell {{ inventory.status }}">
+                        {{ inventory.get_status_display }}
+                    </td>
+                    <td class="row-select">
+                        <input type="number" class="wine-qty"
+                               min="1" max="{{ inventory.qty }}" placeholder="{{ inventory.qty }}">
+                        <input type="checkbox"
+                               name="selected_wines"
+                               value="{{ inventory.id }}"
+                               class="wine-checkbox"
+                               data-stock="{{ inventory.qty }}"
+                               data-price="{{ inventory.purchase_price|default:0 }}">
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="11" class="empty-row">{% trans "No wines found." %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</div>
+
+<!-- ===== Footer Bar ===== -->
+<div class="footer-bar" id="footerBar">
+    <div id="selectionSummary">{% trans "No wines selected." %}</div>
+    <div class="footer-actions">
+        <button type="button" class="export-btn" id="batchEditButton" disabled>
+            {% trans "Batch Edit" %}
+        </button>
+        <button type="submit" form="wineForm" class="export-btn" id="exportButton" disabled>
+            {% trans "Export Selected" %}
+        </button>
+    </div>
+</div>
+
+<!-- ===== Batch Edit Modal ===== -->
+<div id="batchEditModal" class="modal">
+    <div class="modal-content">
+        <h3>{% trans "Batch Edit" %}</h3>
+        <form id="batchEditForm" method="post" action="{% url 'batch_edit_wines' %}">
+            {% csrf_token %}
+            <input type="hidden" name="selected_wines" id="batchSelectedWines">
+
+            <label>{% trans "Vintage" %}</label>
+            <input type="text" name="vintage" placeholder="{% trans 'e.g. 2018 or NV' %}">
+
+            <label>{% trans "Category" %}</label>
+            <select name="category">
+                <option value="">{% trans "— Keep Unchanged —" %}</option>
+                <option value="red">Red</option>
+                <option value="white">White</option>
+                <option value="rose">Rosé</option>
+                <option value="champagne">Champagne</option>
+                <option value="rose_champagne">Rosé Champagne</option>
+                <option value="sparkling">Sparkling</option>
+                <option value="yellow">Yellow</option>
+                <option value="liqueur">Liqueur</option>
+                <option value="other">Other</option>
+            </select>
+
+            <label>{% trans "Region" %}</label>
+            <input type="text" name="region">
+
+            <label>{% trans "Bottle Size (cl)" %}</label>
+            <input type="number" name="bottle_size" min="1">
+
+            <label>{% trans "Status" %}</label>
+            <select name="status">
+                <option value="">{% trans "— Keep Unchanged —" %}</option>
+                {% for value, label in STATUS_CHOICES %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <div class="modal-buttons">
+                <button type="button" id="cancelBatchEdit">{% trans "Cancel" %}</button>
+                <button type="submit">{% trans "Apply" %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const checkboxes = document.querySelectorAll('.wine-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    const summary = document.getElementById('selectionSummary');
+    const exportButton = document.getElementById('exportButton');
+    const batchButton = document.getElementById('batchEditButton');
+    const footerBar = document.getElementById('footerBar');
+    const searchInput = document.getElementById('searchName');
+    const categoryFilter = document.getElementById('filterCategory');
+    const table = document.getElementById('wineTable');
+    const rows = table.querySelectorAll('tbody tr');
+
+    // ===== Update selection summary =====
+    function updateSummary() {
+        let totalQty = 0, totalValue = 0, selectedCount = 0;
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                selectedCount++;
+                const qtyInput = cb.previousElementSibling;
+                let qty = parseInt(qtyInput.value) || parseInt(cb.dataset.stock);
+                if (qty > parseInt(cb.dataset.stock)) qty = parseInt(cb.dataset.stock);
+                qtyInput.value = qty;
+                totalQty += qty;
+                totalValue += qty * parseFloat(cb.dataset.price || 0);
+            }
+        });
+
+        if (selectedCount === 0) {
+            summary.textContent = "{{ _('No wines selected.') }}";
+            exportButton.disabled = true;
+            batchButton.disabled = true;
+            footerBar.classList.remove('visible');
+        } else {
+            summary.textContent = `${selectedCount} selected | ${totalQty} bottles | €${totalValue.toFixed(2)}`;
+            exportButton.disabled = false;
+            batchButton.disabled = false;
+            footerBar.classList.add('visible');
+        }
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', () => {
+        const qtyInput = cb.previousElementSibling;
+        if (cb.checked) {
+            qtyInput.style.display = 'inline-block';
+            if (!qtyInput.value) qtyInput.value = qtyInput.placeholder;
+        } else {
+            qtyInput.style.display = 'none';
+            qtyInput.value = '';
+        }
+        updateSummary();
+    }));
+
+    document.querySelectorAll('.wine-qty').forEach(input => input.addEventListener('input', updateSummary));
+
+    selectAll.addEventListener('change', () => {
+        checkboxes.forEach(cb => {
+            cb.checked = selectAll.checked;
+            const qtyInput = cb.previousElementSibling;
+            qtyInput.style.display = selectAll.checked ? 'inline-block' : 'none';
+            if (selectAll.checked && !qtyInput.value) qtyInput.value = qtyInput.placeholder;
+            if (!selectAll.checked) qtyInput.value = '';
+        });
+        updateSummary();
+    });
+
+    // ===== Filtering =====
+    function applyFilters() {
+        const searchText = searchInput.value.toLowerCase();
+        const selectedCategory = categoryFilter.value.toLowerCase();
+
+        rows.forEach(row => {
+            const name = row.cells[0].textContent.toLowerCase();
+            const category = row.cells[2].textContent.toLowerCase();
+            const matchesSearch = name.includes(searchText);
+            const matchesCategory = !selectedCategory || category === selectedCategory;
+            row.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    categoryFilter.addEventListener('change', applyFilters);
+
+    // ===== Sorting =====
+    let sortColumn = null;
+    let sortDirection = 1;
+
+    table.querySelectorAll('thead th[data-column]').forEach((th, index) => {
+        th.addEventListener('click', () => {
+            const column = th.dataset.column;
+            if(sortColumn === column) sortDirection *= -1; 
+            else { sortColumn = column; sortDirection = 1; }
+
+            table.querySelectorAll('thead th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
+            th.classList.add(sortDirection === 1 ? 'sort-asc' : 'sort-desc');
+
+            const tbody = table.querySelector('tbody');
+            const sorted = Array.from(tbody.querySelectorAll('tr'))
+                .filter(r => r.style.display !== 'none')
+                .sort((a, b) => {
+                    let valA = a.cells[index].textContent.trim();
+                    let valB = b.cells[index].textContent.trim();
+
+                    // Columns that are numeric
+                    if(['price','qty','bottle_size'].includes(column)){
+                        valA = parseFloat(valA.replace(/[^\d.-]/g,'')) || 0;
+                        valB = parseFloat(valB.replace(/[^\d.-]/g,'')) || 0;
+                    } else {
+                        // String columns: normalize accents
+                        valA = valA.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                        valB = valB.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                    }
+
+                    if(valA < valB) return -1*sortDirection;
+                    if(valA > valB) return 1*sortDirection;
+                    return 0;
+                });
+
+            tbody.innerHTML = '';
+            sorted.forEach(r => tbody.appendChild(r));
+        });
+    });
+
+    // ===== Batch Edit Modal Logic =====
+    const batchModal = document.getElementById('batchEditModal');
+    const cancelBatchEdit = document.getElementById('cancelBatchEdit');
+    const batchSelectedInput = document.getElementById('batchSelectedWines');
+
+    batchButton.addEventListener('click', () => {
+        const selected = Array.from(document.querySelectorAll('.wine-checkbox:checked')).map(cb => cb.value);
+        if (!selected.length) return;
+        batchSelectedInput.value = selected.join(',');
+        batchModal.style.display = 'flex';
+    });
+
+    cancelBatchEdit.addEventListener('click', () => batchModal.style.display = 'none');
+    window.addEventListener('click', e => {
+        if (e.target === batchModal) batchModal.style.display = 'none';
+    });
+
+    // ===== Enable/disable buttons =====
+    function updateButtons() {
+        const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        batchButton.disabled = selectedCount === 0;
+    }
+    checkboxes.forEach(cb => cb.addEventListener('change', updateButtons));
+    selectAll.addEventListener('change', updateButtons);
+
+</script>
+{% endblock %}

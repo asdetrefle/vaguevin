@@ -1,0 +1,121 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-13 02:06+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "VagueVin Login"
+msgstr "Connexion VagueVin"
+
+msgid "Username"
+msgstr "Nom d'utilisateur"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Login"
+msgstr "Se connecter"
+
+msgid "Invalid credentials"
+msgstr "Identifiants invalides"
+
+msgid "Wine Inventory"
+msgstr "Inventaire des vins"
+
+msgid "Logout"
+msgstr "Déconnexion"
+
+msgid "No wines found"
+msgstr "Aucun vin trouvé"
+
+msgid "VagueVin Inventory Control"
+msgstr "Gestion de l'inventaire VagueVin"
+
+msgid "Search by name..."
+msgstr "Chercher par nom..."
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Vintage"
+msgstr "Millésime"
+
+msgid "Category"
+msgstr "Catégorie"
+
+msgid "Region"
+msgstr "Région"
+
+msgid "Bottle Size (cl)"
+msgstr "Taille de Bouteille (cl)"
+
+msgid "Price (€)"
+msgstr "Prix (€)"
+
+msgid "Quantity"
+msgstr "Quantité"
+
+msgid "Status"
+msgstr "Statut"
+
+msgid "In Bond"
+msgstr "Sous douane"
+
+msgid "In Stock"
+msgstr "En stock"
+
+msgid "Low"
+msgstr "Faible"
+
+msgid "Out"
+msgstr "Rupture de stock"
+
+msgid "Reserved"
+msgstr "Réservé"
+
+msgid "Sold"
+msgstr "Vendu"
+
+msgid "Consumed"
+msgstr "Consommé"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "No wines selected"
+msgstr "Aucun vin sélectionné"
+
+msgid "selected"
+msgstr "sélectionné(s)"
+
+msgid "bottles"
+msgstr "bouteilles"
+
+msgid "Batch Edit"
+msgstr "Modifier la Sélection"
+
+msgid "— Keep Unchanged —"
+msgstr "- Rester Inchangé -"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Apply"
+msgstr "Appliquer"
+
+msgid "Export Selected"
+msgstr "Exporter la Sélection"

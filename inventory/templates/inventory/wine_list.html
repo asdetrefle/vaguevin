@@ -1,0 +1,70 @@
+{% extends "inventory/base.html" %}
+{% load i18n %}
+
+{% block title %}Wine List{% endblock %}
+
+{% block winelist_active %}active{% endblock %}
+
+{% block style %}{% endblock %}
+
+{% block content %}
+<!-- ===== Table ===== -->
+<div class="table-container">
+    <form id="wineForm" method="post" action="{% url 'export_wines' %}">
+        {% csrf_token %}
+        <table id="wineTable">
+            <thead>
+                <tr>
+                    <th data-column="name">{% trans "Name" %}</th>
+                    <th data-column="vintage">{% trans "Vintage" %}</th>
+                    <th data-column="category">{% trans "Category" %}</th>
+                    <th data-column="region">{% trans "Region" %}</th>
+                    <th data-column="bottle_size">{% trans "Bottle Size (cl)" %}</th>
+                    <!-- <th data-column="appellation">{% trans "Appellation" %}</th> -->
+                    <th data-column="price">{% trans "Price (€)" %}</th>
+                    <th data-column="qty">{% trans "Quantity" %}</th>
+                    <!-- <th data-column="purchase_date">{% trans "Purchase Date" %}</th> -->
+                    <th data-column="status">{% trans "Status" %}</th>
+                    <th class="row-select"><input type="checkbox" id="selectAll"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wine in wines %}
+                <tr>
+                    <td>{{ wine.name }}</td>
+                    <td>{{ wine.vintage|default:"—" }}</td>
+                    <td>{{ wine.get_category_display }}</td>
+                    <td>{{ wine.region|default:"—" }}</td>
+                    <td>{{ wine.bottle_size|default:"—" }}</td>
+                    <!-- <td>{{ wine.appellation|default:"—" }}</td> -->
+                    <td>
+                        {% if wine.purchase_price and wine.purchase_price != '0' %}
+                            {{ wine.purchase_price|floatformat:0 }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>{{ wine.qty }}</td>
+                    <!-- <td>{{ wine.purchase_date|date:"Y-m-d" }}</td> -->
+                    <td>{{ wine.get_status_display }}</td>
+                    <td class="row-select">
+                        <input type="number" class="wine-qty"
+                            min="1" max="{{ wine.qty }}" placeholder="{{ wine.qty }}">
+                        <input type="checkbox"
+                            name="selected_wines"
+                            value="{{ wine.id }}"
+                            class="wine-checkbox"
+                            data-stock="{{ wine.qty }}"
+                            data-price="{{ wine.purchase_price|default:0 }}">
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="11" class="empty-row">{% trans "No wines found." %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}

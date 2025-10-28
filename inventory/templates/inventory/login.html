@@ -1,0 +1,124 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{% trans "VagueVin Login" %}</title>
+    <style>
+        body {
+            font-family: "Inter", Arial, sans-serif;
+            background: #f4f5f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background: #fff;
+            padding: 40px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            margin-bottom: 24px;
+            font-weight: 600;
+            font-size: 22px;
+            color: #333;
+        }
+
+        input[type=text],
+        input[type=password] {
+            display: block;
+            width: calc(100% - 2px);
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            background-color: #6366f1;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #4f46e5;
+        }
+
+        .error {
+            color: #b91c1c;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .lang-select {
+            margin-bottom: 16px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+            font-size: 14px;
+            width: 100%;
+            background-color: #fff;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <h2>🍷 {% trans "VagueVin Login" %}</h2>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <!-- Language Selector -->
+        <form method="get" action="{% url 'set_language' %}">
+            <select name="lang" onchange="this.form.submit()" class="lang-select">
+                <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>English</option>
+                <option value="fr" {% if LANGUAGE_CODE == 'fr' %}selected{% endif %}>Français</option>
+                <option value="zh" {% if LANGUAGE_CODE == 'zh' %}selected{% endif %}>中文</option>
+            </select>
+        </form>
+
+        <!-- Login Form -->
+        <form method="POST">
+            {% csrf_token %}
+            <input type="text" name="username" placeholder="{% trans 'Username' %}" required>
+            <input type="password" name="password" placeholder="{% trans 'Password' %}" required>
+            <button type="submit">{% trans "Login" %}</button>
+        </form>
+
+        <div class="footer">{% trans "VagueVin Inventory Control" %}</div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,121 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-13 02:06+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "VagueVin Login"
+msgstr "登陆 VagueVin"
+
+msgid "Username"
+msgstr "用户名"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Login"
+msgstr "登陆"
+
+msgid "Invalid credentials"
+msgstr "用户名或密码错误"
+
+msgid "Wine Inventory"
+msgstr "库存管理"
+
+msgid "Logout"
+msgstr "登出"
+
+msgid "No wines found."
+msgstr "未找到酒品"
+
+msgid "VagueVin Inventory Control"
+msgstr "VagueVin库存管理"
+
+msgid "Search by name..."
+msgstr "按名称查找..."
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Vintage"
+msgstr "年份"
+
+msgid "Category"
+msgstr "类别"
+
+msgid "Region"
+msgstr "产区"
+
+msgid "Bottle Size (cl)"
+msgstr "规格（cl）"
+
+msgid "Price (€)"
+msgstr "价格 (€)"
+
+msgid "Quantity"
+msgstr "数量"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "In Bond"
+msgstr "保税"
+
+msgid "In Stock"
+msgstr "有货"
+
+msgid "Low"
+msgstr "少量"
+
+msgid "Out"
+msgstr "无货"
+
+msgid "Reserved"
+msgstr "预留"
+
+msgid "Sold"
+msgstr "已售"
+
+msgid "Consumed"
+msgstr "已消费"
+
+msgid "Other"
+msgstr "其他"
+
+msgid "No wines selected"
+msgstr "未选择葡萄酒"
+
+msgid "selected"
+msgstr "已选择"
+
+msgid "bottles"
+msgstr "瓶"
+
+msgid "Batch Edit"
+msgstr "修改所选"
+
+msgid "— Keep Unchanged —"
+msgstr "- 保持不变 -"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Apply"
+msgstr "确认"
+
+msgid "Export Selected"
+msgstr "导出所选"
