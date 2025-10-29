@@ -93,9 +93,9 @@
 
 {% block content %}
 <div class="wine-list-header">
-    <h2>{% trans "Wine List" %} : {{ wine_list.name|default:wine_list.uuid }}</h2>
+    <h2>{% trans "Wine List" %} — {{ wine_list.uuid }}</h2>
     <div class="status">
-        {% trans "Status" %} : {{ wine_list.get_status_display }}
+        {% trans "Status" %}: {{ wine_list.get_status_display }}
     </div>
 </div>
 
@@ -107,7 +107,7 @@
                 <th>{% trans "Vintage" %}</th>
                 <th>{% trans "Category" %}</th>
                 <th>{% trans "Region" %}</th>
-                <!-- <th>{% trans "Appellation" %}</th> -->
+                <th>{% trans "Appellation" %}</th>
                 <th>{% trans "Bottle Size (cl)" %}</th>
                 <th>{% trans "Offer Price (€)" %}</th>
                 <th>{% trans "Offer Qty" %}</th>
@@ -121,7 +121,7 @@
                 <td>{{ item.vintage|default:"—" }}</td>
                 <td>{{ item.category|title }}</td>
                 <td>{{ item.region|default:"—" }}</td>
-                <!-- <td>{{ item.appellation|default:"—" }}</td> -->
+                <td>{{ item.appellation|default:"—" }}</td>
                 <td>{{ item.bottle_size }}</td>
                 <td>{{ item.offer_price|floatformat:0 }}</td>
                 <td>{{ item.offer_qty }}</td>

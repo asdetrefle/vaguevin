@@ -1,17 +1,22 @@
 import pandas as pd
-from django.shortcuts import render, redirect
+import json
+import uuid
+
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils.translation import gettext as _
 from django.utils import translation
-from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
-from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
-from .models import Wine, WineInventory, STATUS_CHOICES
+from .models import Wine, WineInventory, STATUS_CHOICES, WineItem, WineList
+from .serializers import WineItemSerializer
+
 
 def login_view(request):
     """
@@ -54,15 +59,6 @@ def logout_view(request):
     logout(request)
     return redirect('login')  # 'login' is the name of your login URL
 
-
-# def set_language(request):
-#     user_language = request.GET.get('lang', 'en')
-#     request.session['django_language'] = user_language  # 👈 use string key
-#     request.session.modified = True
-#     print("Accept-Language:", request.headers.get('Accept-Language'))
-#     print("Session language:", request.session.get('django_language'))
-#     print("Active language in view:", translation.get_language())
-#     return redirect(request.META.get('HTTP_REFERER', '/wines/'))
 
 def set_language(request):
     lang_code = request.GET.get('lang', 'en')
@@ -178,7 +174,8 @@ def batch_edit_wines(request):
                 inv.save()
 
         if wine_updates or inventory_updates:
-            messages.success(request, f"{len(inventories)} inventory items updated successfully.")
+            messages.success(
+                request, f"{len(inventories)} inventory items updated successfully.")
         else:
             messages.info(request, "No changes were applied.")
 
@@ -188,10 +185,171 @@ def batch_edit_wines(request):
 
 
 @login_required
-def create_wine_list_view(request):
-    return render(request, 'inventory/wine_list.html')
+@csrf_exempt
+@require_POST
+def create_wine_list(request):
+    data = json.loads(request.body)
+
+    name = data.get("name")
+    description = data.get("description", None)
+    items = data.get("items", [])
+
+    if not items:
+        return JsonResponse({"success": False, "error": "No items selected"})
+
+    # create wine list with UUID
+    wine_list = WineList.objects.create(
+        uuid=uuid.uuid4(), name=name, description=description, status="created")
+
+    for it in items:
+        inventory_id = it.get("inventory_id")
+        offer_qty = it.get("offer_qty", 1)
+        try:
+            inventory = WineInventory.objects.get(id=inventory_id)
+            WineItem.objects.create(
+                inventory=inventory,
+                wine_list=wine_list,
+                offer_qty=offer_qty,
+                offer_price=inventory.purchase_price  # or your logic
+            )
+        except WineInventory.DoesNotExist:
+            continue
+
+    return JsonResponse({"success": True, "uuid": str(wine_list.uuid)})
 
 
 @login_required
-def wine_list_view(request):
-    return render(request, 'inventory/wine_list.html')
+def wine_list_index_view(request):
+    """
+    Display all WineLists for the logged-in user except archived ones.
+    """
+    wine_lists = (
+        WineList.objects.exclude(status__in=["archived"])
+        .prefetch_related("items")  # optimize item count queries
+        .order_by("-created_at")
+    )
+
+    context = {
+        "wine_lists": wine_lists,
+    }
+    return render(request, "inventory/wine_list_index.html", context)
+
+
+def wine_list_view(request, uuid):
+    wine_list = get_object_or_404(
+        WineList.objects.exclude(status='archived'), uuid=uuid)
+    items = wine_list.items.all()
+    display_items = [WineItemSerializer(item) for item in items]
+
+    return render(request, "inventory/wine_list.html", {
+        "wine_list": wine_list,
+        "display_items": display_items
+    })
+
+
+def submit_wine_list(request, uuid):
+    """
+    Submit a WineList (mark it as 'submitted').
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method."}, status=400)
+
+    wine_list = get_object_or_404(
+        WineList.objects.exclude(status='archived'), uuid=uuid)
+
+    if wine_list.status != 'created':
+        return JsonResponse({
+            "success": False,
+            "error": f"WineList cannot be confirmed from status '{wine_list.status}'."
+        }, status=400)
+
+    wine_list.status = 'submitted'
+    wine_list.save()
+
+    return JsonResponse({
+        "success": True,
+        "message": "Wine list submitted successfully.",
+        "uuid": str(wine_list.uuid)
+    })
+
+
+login_required
+
+
+@require_POST
+def update_wine_list_status(request):
+    """Bulk update the status of selected wine lists."""
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        uuids = data.get('uuids', [])
+        status = data.get('status')
+
+        if not uuids or not status:
+            return JsonResponse({'success': False, 'error': 'Missing data.'}, status=400)
+
+        valid_statuses = [choice[0] for choice in WineList.STATUS_CHOICES]
+        if status not in valid_statuses:
+            return JsonResponse({'success': False, 'error': 'Invalid status.'}, status=400)
+
+        updated = WineList.objects.filter(uuid__in=uuids).update(status=status)
+
+        return JsonResponse({'success': True, 'updated_count': updated})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@login_required
+def export_wine_list_pdf(request, uuid):
+    from weasyprint import HTML
+    import io
+
+    # Get the wine list
+    wine_list = get_object_or_404(
+        WineList.objects.exclude(status='archived'), uuid=uuid)
+    items = wine_list.items.all()  # adjust if you use related_name
+
+    # Build a pandas DataFrame
+    data = []
+    for item in items:
+        data.append({
+            "Name": item.inventory.wine.name,
+            "Vintage": item.inventory.wine.vintage or "",
+            "Category": item.inventory.wine.category,
+            "Region": item.inventory.wine.region or "",
+            "Bottle Size (cl)": item.inventory.bottle_size,
+            "Qty": item.accept_qty or item.offer_qty,
+            "Note": item.note or "",
+        })
+    df = pd.DataFrame(data)
+
+    # Convert DataFrame to HTML
+    html_content = df.to_html(index=False, border=0, justify='left')
+
+    # Optional: Wrap HTML in a minimal template
+    html = f"""
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            table {{ border-collapse: collapse; width: 100%; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; font-size: 12px; }}
+            th {{ background-color: #f2f2f2; }}
+        </style>
+    </head>
+    <body>
+        <h2>Wine List: {wine_list.name or wine_list.uuid}</h2>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    # Generate PDF
+    pdf_file = io.BytesIO()
+    HTML(string=html).write_pdf(pdf_file)
+    pdf_file.seek(0)
+
+    # Return PDF as response
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="WineList_{wine_list.name or wine_list.uuid}.pdf"'
+    return response

@@ -82,14 +82,33 @@
 
 {% block content %}
 <!-- ===== Filters ===== -->
-<div class="filters">
-    <input type="text" id="searchName" class="filter-input" placeholder="{% trans 'Search by name...' %}">
-    <select id="filterCategory" class="filter-select">
-        <option value="">{% trans "All Categories" %}</option>
-        {% for value, label in WineInventory.WINE_CATEGORY_CHOICES %}
-            <option value="{{ value }}">{{ label }}</option>
-        {% endfor %}
-    </select>
+<div class="filters-actions" style="display: flex; align-items: center; gap: 16px; margin-right: 24px;">
+    <!-- Filters -->
+    <div class="filters" style="flex-grow: 1;">
+        <input type="text" id="searchName" class="filter-input" placeholder="{% trans 'Search by name...' %}">
+        <select id="filterCategory" class="filter-select">
+            <option value="">{% trans "All Categories" %}</option>
+            <option value="Red">Red</option>
+            <option value="White">White</option>
+            <option value="Rosé">Rosé</option>
+            <option value="Champagne">Champagne</option>
+            <option value="Rosé Champagne">Rosé Champagne</option>
+            <option value="Sparkling">Sparkling</option>
+            <option value="Yellow">Yellow</option>
+            <option value="Liqueur">Liqueur</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions" style="display: flex; gap: 8px;">
+        <button type="button" class="export-btn" id="batchEditButton" disabled>
+            {% trans "Batch Edit" %}
+        </button>
+        <button type="submit" form="wineForm" class="export-btn" id="exportButton" disabled>
+            {% trans "Export Selected" %}
+        </button>
+    </div>
 </div>
 
 <!-- ===== Table ===== -->
@@ -152,11 +171,12 @@
 <div class="footer-bar" id="footerBar">
     <div id="selectionSummary">{% trans "No wines selected." %}</div>
     <div class="footer-actions">
-        <button type="button" class="export-btn" id="batchEditButton" disabled>
-            {% trans "Batch Edit" %}
-        </button>
-        <button type="submit" form="wineForm" class="export-btn" id="exportButton" disabled>
-            {% trans "Export Selected" %}
+        <!-- Name and Description inputs -->
+        <input type="text" id="wineListName" placeholder="{% trans 'Wine List Name' %}" style="padding:8px 12px; border-radius:4px; border:1px solid #ccc; width:300px; margin-right:12px;">
+        <input type="text" id="wineListDescription" placeholder="{% trans 'Description (optional)' %}" style="padding:8px 12px; border-radius:4px; border:1px solid #ccc; width:300px; margin-right:12px;">
+
+        <button type="button" class="export-btn" id="createWineListButton" disabled>
+            {% trans "Create Wine List" %}
         </button>
     </div>
 </div>
@@ -211,151 +231,198 @@
 
 {% block scripts %}
 <script>
-    const checkboxes = document.querySelectorAll('.wine-checkbox');
-    const selectAll = document.getElementById('selectAll');
-    const summary = document.getElementById('selectionSummary');
-    const exportButton = document.getElementById('exportButton');
-    const batchButton = document.getElementById('batchEditButton');
-    const footerBar = document.getElementById('footerBar');
-    const searchInput = document.getElementById('searchName');
-    const categoryFilter = document.getElementById('filterCategory');
-    const table = document.getElementById('wineTable');
-    const rows = table.querySelectorAll('tbody tr');
+const checkboxes = document.querySelectorAll('.wine-checkbox');
+const selectAll = document.getElementById('selectAll');
+const summary = document.getElementById('selectionSummary');
+const exportButton = document.getElementById('exportButton');
+const batchButton = document.getElementById('batchEditButton');
+const createWineListButton = document.getElementById('createWineListButton');
+const footerBar = document.getElementById('footerBar');
+const searchInput = document.getElementById('searchName');
+const categoryFilter = document.getElementById('filterCategory');
+const table = document.getElementById('wineTable');
+const rows = table.querySelectorAll('tbody tr');
 
-    // ===== Update selection summary =====
-    function updateSummary() {
-        let totalQty = 0, totalValue = 0, selectedCount = 0;
-        checkboxes.forEach(cb => {
-            if (cb.checked) {
-                selectedCount++;
-                const qtyInput = cb.previousElementSibling;
-                let qty = parseInt(qtyInput.value) || parseInt(cb.dataset.stock);
-                if (qty > parseInt(cb.dataset.stock)) qty = parseInt(cb.dataset.stock);
-                qtyInput.value = qty;
-                totalQty += qty;
-                totalValue += qty * parseFloat(cb.dataset.price || 0);
-            }
-        });
-
-        if (selectedCount === 0) {
-            summary.textContent = "{{ _('No wines selected.') }}";
-            exportButton.disabled = true;
-            batchButton.disabled = true;
-            footerBar.classList.remove('visible');
-        } else {
-            summary.textContent = `${selectedCount} selected | ${totalQty} bottles | €${totalValue.toFixed(2)}`;
-            exportButton.disabled = false;
-            batchButton.disabled = false;
-            footerBar.classList.add('visible');
-        }
-    }
-
-    checkboxes.forEach(cb => cb.addEventListener('change', () => {
-        const qtyInput = cb.previousElementSibling;
+// ===== Update selection summary =====
+function updateSummary() {
+    let totalQty = 0, totalValue = 0, selectedCount = 0;
+    checkboxes.forEach(cb => {
         if (cb.checked) {
-            qtyInput.style.display = 'inline-block';
-            if (!qtyInput.value) qtyInput.value = qtyInput.placeholder;
-        } else {
-            qtyInput.style.display = 'none';
-            qtyInput.value = '';
-        }
-        updateSummary();
-    }));
-
-    document.querySelectorAll('.wine-qty').forEach(input => input.addEventListener('input', updateSummary));
-
-    selectAll.addEventListener('change', () => {
-        checkboxes.forEach(cb => {
-            cb.checked = selectAll.checked;
+            selectedCount++;
             const qtyInput = cb.previousElementSibling;
-            qtyInput.style.display = selectAll.checked ? 'inline-block' : 'none';
-            if (selectAll.checked && !qtyInput.value) qtyInput.value = qtyInput.placeholder;
-            if (!selectAll.checked) qtyInput.value = '';
-        });
-        updateSummary();
+            let qty = parseInt(qtyInput.value) || parseInt(cb.dataset.stock);
+            if (qty > parseInt(cb.dataset.stock)) qty = parseInt(cb.dataset.stock);
+            qtyInput.value = qty;
+            totalQty += qty;
+            totalValue += qty * parseFloat(cb.dataset.price || 0);
+        }
     });
 
-    // ===== Filtering =====
-    function applyFilters() {
-        const searchText = searchInput.value.toLowerCase();
-        const selectedCategory = categoryFilter.value.toLowerCase();
+    if (selectedCount === 0) {
+        summary.textContent = "{{ _('No wines selected.') }}";
+        exportButton.disabled = true;
+        batchButton.disabled = true;
+        createWineListButton.disabled = true;
+        footerBar.classList.remove('visible');
+    } else {
+        summary.textContent = `${selectedCount} selected | ${totalQty} bottles | €${totalValue.toFixed(2)}`;
+        exportButton.disabled = false;
+        batchButton.disabled = false;
+        createWineListButton.disabled = false;
+        footerBar.classList.add('visible');
+    }
+}
 
-        rows.forEach(row => {
-            const name = row.cells[0].textContent.toLowerCase();
-            const category = row.cells[2].textContent.toLowerCase();
-            const matchesSearch = name.includes(searchText);
-            const matchesCategory = !selectedCategory || category === selectedCategory;
-            row.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
-        });
+checkboxes.forEach(cb => cb.addEventListener('change', () => {
+    const qtyInput = cb.previousElementSibling;
+    if (cb.checked) {
+        qtyInput.style.display = 'inline-block';
+        if (!qtyInput.value) qtyInput.value = qtyInput.placeholder;
+    } else {
+        qtyInput.style.display = 'none';
+        qtyInput.value = '';
+    }
+    updateSummary();
+}));
+
+document.querySelectorAll('.wine-qty').forEach(input => input.addEventListener('input', updateSummary));
+
+selectAll.addEventListener('change', () => {
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+        const qtyInput = cb.previousElementSibling;
+        qtyInput.style.display = selectAll.checked ? 'inline-block' : 'none';
+        if (selectAll.checked && !qtyInput.value) qtyInput.value = qtyInput.placeholder;
+        if (!selectAll.checked) qtyInput.value = '';
+    });
+    updateSummary();
+});
+
+createWineListButton.addEventListener('click', async () => {
+    const selected = Array.from(document.querySelectorAll('.wine-checkbox:checked'))
+        .map(cb => ({
+            inventory_id: cb.value,
+            offer_qty: parseInt(cb.previousElementSibling.value) || parseInt(cb.dataset.stock)
+        }));
+    if (selected.length === 0) return;
+
+    // Get name and description inputs
+    const name = document.getElementById('wineListName').value.trim();
+    const description = document.getElementById('wineListDescription').value.trim();
+
+    if (!name) {
+        alert("Wine list name cannot be blank.");
+        return;
     }
 
-    searchInput.addEventListener('input', applyFilters);
-    categoryFilter.addEventListener('change', applyFilters);
-
-    // ===== Sorting =====
-    let sortColumn = null;
-    let sortDirection = 1;
-
-    table.querySelectorAll('thead th[data-column]').forEach((th, index) => {
-        th.addEventListener('click', () => {
-            const column = th.dataset.column;
-            if(sortColumn === column) sortDirection *= -1; 
-            else { sortColumn = column; sortDirection = 1; }
-
-            table.querySelectorAll('thead th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
-            th.classList.add(sortDirection === 1 ? 'sort-asc' : 'sort-desc');
-
-            const tbody = table.querySelector('tbody');
-            const sorted = Array.from(tbody.querySelectorAll('tr'))
-                .filter(r => r.style.display !== 'none')
-                .sort((a, b) => {
-                    let valA = a.cells[index].textContent.trim();
-                    let valB = b.cells[index].textContent.trim();
-
-                    // Columns that are numeric
-                    if(['price','qty','bottle_size'].includes(column)){
-                        valA = parseFloat(valA.replace(/[^\d.-]/g,'')) || 0;
-                        valB = parseFloat(valB.replace(/[^\d.-]/g,'')) || 0;
-                    } else {
-                        // String columns: normalize accents
-                        valA = valA.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-                        valB = valB.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-                    }
-
-                    if(valA < valB) return -1*sortDirection;
-                    if(valA > valB) return 1*sortDirection;
-                    return 0;
-                });
-
-            tbody.innerHTML = '';
-            sorted.forEach(r => tbody.appendChild(r));
+    try {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const response = await fetch("{% url 'create_wine_list' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                name: name,
+                description: description,
+                items: selected
+            })
         });
-    });
 
-    // ===== Batch Edit Modal Logic =====
-    const batchModal = document.getElementById('batchEditModal');
-    const cancelBatchEdit = document.getElementById('cancelBatchEdit');
-    const batchSelectedInput = document.getElementById('batchSelectedWines');
-
-    batchButton.addEventListener('click', () => {
-        const selected = Array.from(document.querySelectorAll('.wine-checkbox:checked')).map(cb => cb.value);
-        if (!selected.length) return;
-        batchSelectedInput.value = selected.join(',');
-        batchModal.style.display = 'flex';
-    });
-
-    cancelBatchEdit.addEventListener('click', () => batchModal.style.display = 'none');
-    window.addEventListener('click', e => {
-        if (e.target === batchModal) batchModal.style.display = 'none';
-    });
-
-    // ===== Enable/disable buttons =====
-    function updateButtons() {
-        const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-        batchButton.disabled = selectedCount === 0;
+        const data = await response.json();
+        if (data.success && data.uuid) {
+            window.location.href = `/winelist/${data.uuid}/`;
+        } else {
+            alert("Failed to create wine list.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error creating wine list.");
     }
-    checkboxes.forEach(cb => cb.addEventListener('change', updateButtons));
-    selectAll.addEventListener('change', updateButtons);
+});
+
+// ===== Filtering =====
+function applyFilters() {
+    const searchText = searchInput.value.toLowerCase();
+    const selectedCategory = categoryFilter.value.toLowerCase();
+
+    rows.forEach(row => {
+        const name = row.cells[0].textContent.toLowerCase();
+        const category = row.cells[2].textContent.toLowerCase();
+        const matchesSearch = name.includes(searchText);
+        const matchesCategory = !selectedCategory || category === selectedCategory;
+        row.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
+    });
+}
+
+searchInput.addEventListener('input', applyFilters);
+categoryFilter.addEventListener('change', applyFilters);
+
+// ===== Sorting =====
+let sortColumn = null;
+let sortDirection = 1;
+
+table.querySelectorAll('thead th[data-column]').forEach((th, index) => {
+    th.addEventListener('click', () => {
+        const column = th.dataset.column;
+        if(sortColumn === column) sortDirection *= -1; 
+        else { sortColumn = column; sortDirection = 1; }
+
+        table.querySelectorAll('thead th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
+        th.classList.add(sortDirection === 1 ? 'sort-asc' : 'sort-desc');
+
+        const tbody = table.querySelector('tbody');
+        const sorted = Array.from(tbody.querySelectorAll('tr'))
+            .filter(r => r.style.display !== 'none')
+            .sort((a, b) => {
+                let valA = a.cells[index].textContent.trim();
+                let valB = b.cells[index].textContent.trim();
+
+                // Columns that are numeric
+                if(['price','qty','bottle_size'].includes(column)){
+                    valA = parseFloat(valA.replace(/[^\d.-]/g,'')) || 0;
+                    valB = parseFloat(valB.replace(/[^\d.-]/g,'')) || 0;
+                } else {
+                    // String columns: normalize accents
+                    valA = valA.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                    valB = valB.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                }
+
+                if(valA < valB) return -1*sortDirection;
+                if(valA > valB) return 1*sortDirection;
+                return 0;
+            });
+
+        tbody.innerHTML = '';
+        sorted.forEach(r => tbody.appendChild(r));
+    });
+});
+
+// ===== Batch Edit Modal Logic =====
+const batchModal = document.getElementById('batchEditModal');
+const cancelBatchEdit = document.getElementById('cancelBatchEdit');
+const batchSelectedInput = document.getElementById('batchSelectedWines');
+
+batchButton.addEventListener('click', () => {
+    const selected = Array.from(document.querySelectorAll('.wine-checkbox:checked')).map(cb => cb.value);
+    if (!selected.length) return;
+    batchSelectedInput.value = selected.join(',');
+    batchModal.style.display = 'flex';
+});
+
+cancelBatchEdit.addEventListener('click', () => batchModal.style.display = 'none');
+window.addEventListener('click', e => {
+    if (e.target === batchModal) batchModal.style.display = 'none';
+});
+
+// ===== Enable/disable buttons =====
+function updateButtons() {
+    const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    batchButton.disabled = selectedCount === 0;
+}
+checkboxes.forEach(cb => cb.addEventListener('change', updateButtons));
+selectAll.addEventListener('change', updateButtons);
 
 </script>
 {% endblock %}

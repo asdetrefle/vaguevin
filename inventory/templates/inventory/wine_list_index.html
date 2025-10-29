@@ -1,0 +1,334 @@
+{% extends "inventory/base.html" %}
+{% load i18n %}
+
+{% block title %}Wine List{% endblock %}
+
+{% block wine_list_index_active %}active{% endblock %}
+
+{% block style %}
+<style>
+    .wine-lists-header {
+        background: #e8e8e8;
+        padding: 12px 24px;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .wine-lists-header h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .wine-list-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+    }
+
+    .wine-list-table th, .wine-list-table td {
+        text-align: left;
+        padding: 10px 16px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .wine-list-table th {
+        background: #fafafa;
+        font-weight: 600;
+    }
+
+    .wine-list-table tr:hover {
+        background: #f6f6f6;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .status-created { background: #e2e3e5; color: #383d41; }
+    .status-submitted { background: #e0f3ff; color: #004085; }
+    .status-confirmed { background: #fff3cd; color: #856404; }
+    .status-finalized { background: #d4edda; color: #155724; }
+    .status-delivered { background: #d1ecf1; color: #0c5460; }
+    .status-archived { background: #f8d7da; color: #721c24; }
+
+    .btn {
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        color: #fff;
+        transition: background 0.2s ease;
+        font-size: 13px;
+    }
+
+    .btn-view {
+        background: #007bff;
+    }
+    .btn-view:hover {
+        background: #0056b3;
+    }
+
+    .btn-share {
+        background: #28a745;
+    }
+    .btn-share:hover {
+        background: #1e7e34;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 8px;
+    }
+
+    .status-select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        gap: 12px;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #888;
+        padding: 40px 0;
+    }
+
+    /* Make name column equal width as UUID */
+    .title-col {
+        font-family: monospace;
+        width: 300px;
+        max-width: 300px;
+        word-break: break-all;
+    }
+
+    .desc-col {
+        width: 250px;
+        max-width: 300px;
+        word-break: break-all;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wine-lists-header">
+    <h2>{% trans "Wine Lists" %}</h2>
+
+    <!-- Actions -->
+    <div class="actions" style="display: flex; gap: 16px;">
+        <select id="statusSelect" class="status-select" disabled>
+            <option value="">{% trans "Change Status..." %}</option>
+            <option value="confirmed">{% trans "Confirmed" %}</option>
+            <option value="delivered">{% trans "Delivered" %}</option>
+            <option value="finalized">{% trans "Finalized" %}</option>
+            <option value="archived">{% trans "Archived" %}</option>
+        </select>
+
+        <!-- Export All button -->
+        <button class="export-btn" id="exportAllButton" disabled>{% trans "Export All" %}</button>
+    </div>
+</div>
+
+<div class="table-container">
+    {% if wine_lists %}
+        <table class="wine-list-table">
+            <thead>
+                <tr>
+                    <th class="title-col">{% trans "Name" %}</th>
+                    <th class="desc-col">{% trans "Description" %}</th>
+                    <th>{% trans "Created At" %}</th>
+                    <th>{% trans "Status" %}</th>
+                    <th>{% trans "Items" %}</th>
+                    <th>{% trans "Total (€)" %}</th>
+                    <th>{% trans "Actions" %}</th>
+                    <th><input type="checkbox" id="selectAll"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wl in wine_lists %}
+                <tr>
+                    <td class="title-col">
+                        {{ wl.name|default:wl.uuid }}
+                    </td>
+                    <td class="desc-col">{{ wl.description|default:"" }}</td>
+                    <td>{{ wl.created_at|date:"Y-m-d H:i" }}</td>
+                    <td><span class="status-badge status-{{ wl.status }}">{{ wl.get_status_display }}</span></td>
+                    <td>{{ wl.total_items }}</td>
+                    <td>{{ wl.total_value|floatformat:0 }}</td>
+                    <td class="actions-cell">
+                        <a href="{% url 'wine_list' wl.uuid %}" class="btn btn-view">{% trans "View" %}</a>
+                        <button class="btn btn-share" onclick="shareWineList('{{ wl.uuid }}')">{% trans "Share" %}</button>
+                    </td>
+                    <td><input type="checkbox" class="rowCheckbox" value="{{ wl.uuid }}"></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            {% trans "No wine lists created yet." %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function shareWineList(uuid) {
+    const url = `${window.location.origin}/winelist/${uuid}/`;
+    navigator.clipboard.writeText(url).then(() => showToast("✅ Wine list URL copied!"));
+}
+
+// --- Toast Notification ---
+function showToast(message) {
+    // Create the toast element
+    const toast = document.createElement("div");
+    toast.textContent = message;
+    toast.style.position = "fixed";
+    toast.style.bottom = "20px";
+    toast.style.right = "20px";
+    toast.style.background = "#333";
+    toast.style.color = "#fff";
+    toast.style.padding = "10px 16px";
+    toast.style.borderRadius = "8px";
+    toast.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+    toast.style.zIndex = "9999";
+    toast.style.opacity = "0";
+    toast.style.transition = "opacity 0.3s ease";
+
+    document.body.appendChild(toast);
+
+    // Fade in
+    requestAnimationFrame(() => { toast.style.opacity = "1"; });
+
+    // Fade out after 2 seconds and remove
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
+
+// === Checkbox selection logic ===
+const selectAll = document.getElementById("selectAll");
+const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+const statusSelect = document.getElementById("statusSelect");
+
+function updateBulkActionState() {
+    const anyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
+    exportAllButton.disabled = !anyChecked;
+    statusSelect.disabled = !anyChecked;
+}
+
+selectAll?.addEventListener("change", e => {
+    rowCheckboxes.forEach(cb => cb.checked = e.target.checked);
+    updateBulkActionState();
+});
+
+rowCheckboxes.forEach(cb => cb.addEventListener("change", updateBulkActionState));
+
+// === Confirmation popup when changing status ===
+statusSelect.addEventListener("change", () => {
+    const newStatus = statusSelect.value;
+    if (!newStatus) return;
+
+    const selected = Array.from(rowCheckboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+
+    if (!selected.length) {
+        alert("Please select at least one wine list.");
+        statusSelect.value = "";
+        return;
+    }
+
+    if (confirm(`Change status of ${selected.length} wine list(s) to "${newStatus}"?`)) {
+        fetch("{% url 'update_wine_list_status' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({ uuids: selected, status: newStatus })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert("Failed to update status.");
+        })
+        .catch(() => alert("Error updating wine list status."));
+    } else {
+        statusSelect.value = "";
+    }
+});
+
+document.getElementById("exportAllButton").addEventListener("click", () => {
+    const uuids = Array.from(document.querySelectorAll(".rowCheckbox:checked"))
+                        .map(cb => cb.value);
+
+    if (uuids.length === 0) {
+        alert("Please select at least one wine list to export.");
+        return;
+    }
+
+    // Open each PDF in a new tab
+        uuids.forEach(uuid => {
+        const url = `${window.location.origin}/winelist/${uuid}/export_pdf/`;
+
+        // Use fetch + blob to force download
+        fetch(url, {
+            method: 'GET',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Network response was not ok");
+
+            // Extract filename from Content-Disposition header
+            const disposition = res.headers.get('Content-Disposition');
+            let filename = `WineList_${uuid}.pdf`; // fallback
+            if (disposition && disposition.includes('filename=')) {
+                filename = disposition
+                            .split('filename=')[1]
+                            .split(';')[0]
+                            .replace(/"/g, '');
+            }
+
+            return res.blob().then(blob => ({ blob, filename }));
+        })
+        .then(({ blob, filename }) => {
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename; // use extracted filename
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        })
+        .catch(() => alert(`Failed to download Wine List ${uuid}`));
+    });
+
+    // /* downloading multiple files depends on how browsers handle multiple programmatic clicks on <a> elements.
+    //    The setTimeout trick sometimes works, but some browsers (Chrome, Firefox) may block multiple downloads
+    //    if triggered too quickly. */
+    // uuids.forEach((uuid, index) => {
+    //     setTimeout(() => {
+    //         const url = `${window.location.origin}/winelist/${uuid}/export_pdf/`;
+            
+    //         // Create temporary link for download
+    //         const a = document.createElement("a");
+    //         a.href = url;
+    //         document.body.appendChild(a);
+    //         a.click();
+    //         document.body.removeChild(a);
+    //     }, index * 200); // small delay to prevent blocking
+    // });
+});
+</script>
+{% endblock %}
