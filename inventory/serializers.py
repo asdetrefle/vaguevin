@@ -7,9 +7,10 @@ class WineItemSerializer:
         self.region = item.inventory.wine.region
         self.appellation = item.inventory.wine.appellation
         self.bottle_size = item.inventory.bottle_size
-        self.offer_price = item.offer_price  # Quantity offered to client
+        self.offer_price = item.offer_price  # Price offered to client
         self.offer_qty = item.offer_qty  # Quantity offered to client
         self.note = item.note
-    
+        self.accept_qty = item.accept_qty  # Quantity ordered by client
+
     def to_dict(self):
         return self.__dict__

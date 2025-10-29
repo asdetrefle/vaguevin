@@ -149,14 +149,17 @@
                         {{ inventory.get_status_display }}
                     </td>
                     <td class="row-select">
-                        <input type="number" class="wine-qty"
-                               min="1" max="{{ inventory.qty }}" placeholder="{{ inventory.qty }}">
+                        <input type="number" class="input-qty"
+                               min="1"
+                               max="{{ inventory.qty }}"
+                               placeholder="{{ inventory.qty }}">
                         <input type="checkbox"
                                name="selected_wines"
                                value="{{ inventory.id }}"
                                class="wine-checkbox"
                                data-stock="{{ inventory.qty }}"
-                               data-price="{{ inventory.purchase_price|default:0 }}">
+                               data-price="{{ inventory.purchase_price|default:0 }}"
+                               {% if inventory.status not in 'in_bond,in_stock' %}disabled{% endif %}>
                     </td>
                 </tr>
                 {% empty %}
@@ -265,7 +268,7 @@ function updateSummary() {
         createWineListButton.disabled = true;
         footerBar.classList.remove('visible');
     } else {
-        summary.textContent = `${selectedCount} selected | ${totalQty} bottles | €${totalValue.toFixed(2)}`;
+        summary.textContent = `${selectedCount} selected | ${totalQty} bottles | €${totalValue.toFixed(0)}`;
         exportButton.disabled = false;
         batchButton.disabled = false;
         createWineListButton.disabled = false;
@@ -276,22 +279,23 @@ function updateSummary() {
 checkboxes.forEach(cb => cb.addEventListener('change', () => {
     const qtyInput = cb.previousElementSibling;
     if (cb.checked) {
-        qtyInput.style.display = 'inline-block';
+        qtyInput.style.visibility = 'visible';
         if (!qtyInput.value) qtyInput.value = qtyInput.placeholder;
     } else {
-        qtyInput.style.display = 'none';
+        qtyInput.style.visibility = 'hidden';
         qtyInput.value = '';
     }
     updateSummary();
 }));
 
-document.querySelectorAll('.wine-qty').forEach(input => input.addEventListener('input', updateSummary));
+document.querySelectorAll('.input-qty').forEach(input => input.addEventListener('input', updateSummary));
 
 selectAll.addEventListener('change', () => {
     checkboxes.forEach(cb => {
+        if (cb.disabled) return; // ⬅️ skip disabled rows
         cb.checked = selectAll.checked;
         const qtyInput = cb.previousElementSibling;
-        qtyInput.style.display = selectAll.checked ? 'inline-block' : 'none';
+        qtyInput.style.visibility = selectAll.checked ? 'visible' : 'hidden';
         if (selectAll.checked && !qtyInput.value) qtyInput.value = qtyInput.placeholder;
         if (!selectAll.checked) qtyInput.value = '';
     });

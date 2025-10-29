@@ -29,7 +29,6 @@
     }
 
     .wine-list-table th, .wine-list-table td {
-        text-align: left;
         padding: 10px 16px;
         border-bottom: 1px solid #eee;
     }
@@ -148,7 +147,7 @@
                     <th>{% trans "Items" %}</th>
                     <th>{% trans "Total (€)" %}</th>
                     <th>{% trans "Actions" %}</th>
-                    <th><input type="checkbox" id="selectAll"></th>
+                    <th class="row-select" style="width: 10px;"><input type="checkbox" id="selectAll"></th>
                 </tr>
             </thead>
             <tbody>
@@ -166,7 +165,9 @@
                         <a href="{% url 'wine_list' wl.uuid %}" class="btn btn-view">{% trans "View" %}</a>
                         <button class="btn btn-share" onclick="shareWineList('{{ wl.uuid }}')">{% trans "Share" %}</button>
                     </td>
-                    <td><input type="checkbox" class="rowCheckbox" value="{{ wl.uuid }}"></td>
+                    <td class="row-select" style="width: 10px;">
+                        <input type="checkbox" class="wine-checkbox" value="{{ wl.uuid }}">
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -217,7 +218,7 @@ function showToast(message) {
 
 // === Checkbox selection logic ===
 const selectAll = document.getElementById("selectAll");
-const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
+const rowCheckboxes = document.querySelectorAll('.wine-checkbox');
 const statusSelect = document.getElementById("statusSelect");
 
 function updateBulkActionState() {
