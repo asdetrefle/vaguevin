@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY",""),
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", default=False, cast=bool)
 SESSION_COOKIE_SECURE = False  # MUST be False for HTTP
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
@@ -92,9 +92,6 @@ DATABASES = {
         'PORT': config('POSTGRES_PORT', default='5432'),
     }
 }
-
-print(config('POSTGRES_DATABASE'), config('POSTGRES_USERNAME'))
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
