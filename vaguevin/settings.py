@@ -93,6 +93,8 @@ DATABASES = {
     }
 }
 
+print(config('POSTGRES_DATABASE'), config('POSTGRES_USERNAME'))
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
