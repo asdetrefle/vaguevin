@@ -85,11 +85,11 @@ WSGI_APPLICATION = "vaguevin.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': 'localhost',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'PORT': config('DB_PORT', default='5432'),
+        'HOST': config('POSTGRES_HOST', default='localhost'),
+        'NAME': config('POSTGRES_DATABASE'),
+        'USER': config('POSTGRES_USERNAME'),
+        'PASSWORD': config('POSTGRES_PASSWORD'),
+        'PORT': config('POSTGRES_PORT', default='5432'),
     }
 }
 
