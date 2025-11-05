@@ -112,7 +112,8 @@
                 <th>{% trans "Region" %}</th>
                 <!-- <th>{% trans "Appellation" %}</th> -->
                 <th>{% trans "Bottle Size (cl)" %}</th>
-                <th>{% trans "Price (€)" %}</th>
+                <th>{% trans "Purchase Price (€)" %}</th>
+                <th>{% trans "Offer Price (€)" %}</th>
                 <th>{% trans "Offer Qty" %}</th>
                 <th>{% trans "Order Qty" %}</th>
                 <th class="row-select" style="width: 10px;">
@@ -123,13 +124,24 @@
         <tbody>
             {% for item in display_items %}
             <tr>
-                <td>{{ item.name }}</td>
-                <td>{{ item.vintage|default:"—" }}</td>
-                <td>{{ item.category|title }}</td>
-                <td>{{ item.region|default:"—" }}</td>
+                <td>{{ item.inventory.wine.name }}</td>
+                <td>{{ item.inventory.wine.vintage|default:"—" }}</td>
+                <td>{{ item.inventory.wine.category|title }}</td>
+                <td>{{ item.inventory.wine.region|default:"—" }}</td>
                 <!-- <td>{{ item.appellation|default:"—" }}</td> -->
-                <td>{{ item.bottle_size }}</td>
-                <td>{{ item.offer_price|floatformat:0 }}</td>
+                <td>{{ item.inventory.bottle_size }}</td>
+                <td>{{ item.inventory.purchase_price|floatformat:0 }}</td>
+                <td>
+                    {% if wine_list.status == "created" %}
+                        <input type="number"
+                            min="0"
+                            step="1"
+                            class="input-offer-price"
+                            value="{{ item.offer_price|floatformat:0 }}">
+                    {% else %}
+                        {{ item.offer_price|floatformat:0 }}
+                    {% endif %}
+                </td>
                 <td>{{ item.offer_qty }}</td>
                 <td>
                     {% if wine_list.status == "created" %}
@@ -163,7 +175,7 @@
     <div id="selectionSummary">{% trans "No wines selected." %}</div>
     <div class="footer-actions">
         {% if wine_list.status == "created" %}
-            <button id="submitButton">{% trans "Submit Wine List" %}</button>
+            <button id="submitButton">{% trans "Amend Wine List" %}</button>
         {% elif wine_list.status == "submitted" %}
             <button disabled>{% trans "Awaiting Payment" %}</button>
         {% elif wine_list.status == "confirmed" %}
@@ -253,14 +265,16 @@ if ("{{ wine_list.status }}" == "created") {
 
     // Submit wine list with accept quantities
     submitButton.addEventListener('click', async () => {
-        if (!confirm("Submit this wine list?")) return;
+        if (!confirm("Confirm this wine list?")) return;
 
         const selected = Array.from(checkboxes)
-            .filter(cb => cb.checked)
             .map(cb => {
                 const tr = cb.closest('tr');
+                const priceInput = tr.querySelector('.input-offer-price');
                 const qtyInput = tr.querySelector('.input-qty');
-                return { item_id: cb.value, accept_qty: parseInt(qtyInput.value) || 0 };
+                return { item_id: cb.value, 
+                         offer_price: parseFloat(priceInput.value) || 0,
+                         accept_qty: parseInt(qtyInput.value) || 0 };
             });
 
         if (selected.length === 0) {
@@ -269,7 +283,7 @@ if ("{{ wine_list.status }}" == "created") {
         }
 
         try {
-            const res = await fetch("{% url 'amend_wine_list' wine_list.uuid %}", {
+            const res = await fetch("{% url 'admin_amend_wine_list' wine_list.uuid %}", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -279,10 +293,10 @@ if ("{{ wine_list.status }}" == "created") {
             });
             const data = await res.json();
             if (data.success) location.reload();
-            else alert("Failed to submit wine list.");
+            else alert("Failed to amend wine list.");
         } catch (err) {
             console.error(err);
-            alert("Error submitting wine list.");
+            alert("Error amending wine list.");
         }
     });
 

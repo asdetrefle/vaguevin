@@ -14,7 +14,6 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from client_portal.serializers import WineItemSerializer
 from .models import Wine, WineInventory, STATUS_CHOICES, WineItem, WineList
 
 
@@ -239,11 +238,10 @@ def wine_list_view(request, uuid):
     wine_list = get_object_or_404(
         WineList.objects.exclude(status='archived'), uuid=uuid)
     items = wine_list.items.all()
-    display_items = [WineItemSerializer(item) for item in items]
 
     return render(request, "inventory/wine_list.html", {
         "wine_list": wine_list,
-        "display_items": display_items
+        "display_items": items,
     })
 
 
@@ -270,6 +268,7 @@ def amend_wine_list(request, uuid):
     # Update each item
     for item_info in items_data:
         item_id = item_info.get("item_id")
+        offer_price = item_info.get("offer_price", 0)
         accept_qty = item_info.get("accept_qty", 0)
 
         if not item_id or accept_qty < 0:
@@ -277,13 +276,13 @@ def amend_wine_list(request, uuid):
 
         try:
             wine_item = WineItem.objects.get(id=item_id, wine_list=wine_list)
+            wine_item.offer_price = max(offer_price, wine_item.inventory.purchase_price)  # not below purchase
             wine_item.accept_qty = min(accept_qty, wine_item.offer_qty)  # don't exceed offer
             wine_item.save()
         except WineItem.DoesNotExist:
             continue  # skip missing
 
     # Update wine list status
-    wine_list.status = "submitted"
     wine_list.save()
     return JsonResponse({"success": True})
 

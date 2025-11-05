@@ -130,3 +130,43 @@ def submit_wine_list(request, uuid):
     wine_list.status = "submitted"
     wine_list.save()
     return JsonResponse({"success": True})
+
+
+@csrf_exempt  # if using JSON and fetch, csrf token header is sent anyway
+def amend_wine_list(request, uuid):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
+
+    wine_list = get_object_or_404(WineList, uuid=uuid)
+
+    if wine_list.status != "created":
+        return JsonResponse({"success": False, "error": "Wine list has already been submitted"}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        items_data = data.get("items", [])
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+
+    if not items_data:
+        return JsonResponse({"success": False, "error": "No items provided"}, status=400)
+
+    # Update each item
+    for item_info in items_data:
+        item_id = item_info.get("item_id")
+        accept_qty = item_info.get("accept_qty", 0)
+
+        if not item_id or accept_qty < 0:
+            continue  # skip invalid
+
+        try:
+            wine_item = WineItem.objects.get(id=item_id, wine_list=wine_list)
+            wine_item.accept_qty = min(accept_qty, wine_item.offer_qty)  # don't exceed offer
+            wine_item.save()
+        except WineItem.DoesNotExist:
+            continue  # skip missing
+
+    # Update wine list status
+    wine_list.status = "submitted"
+    wine_list.save()
+    return JsonResponse({"success": True})

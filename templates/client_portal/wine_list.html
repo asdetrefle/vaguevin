@@ -160,13 +160,7 @@
 </div>
 
 <div class="footer-bar" id="footerBar">
-    <div id="selectionSummary">
-        {% if wine_list.status == "created" %}
-            {% trans "No wines selected." %}
-        {% else %}
-            {% trans "Total Value: " %} {{ wine_list.total_value|floatformat:0 }}
-        {% endif %}
-    </div>
+    <div id="selectionSummary">{% trans "No wines selected." %}</div>
     <div class="footer-actions">
         {% if wine_list.status == "created" %}
             <button id="submitButton">{% trans "Submit Wine List" %}</button>
@@ -205,9 +199,8 @@ function updateSummary() {
         }
     });
 
-    if ("{{ wine_list.status }}" == "created") {
     if (selectedCount === 0) {
-        summary.textContent = "{{ _('No wines selected wtf.') }}";
+        summary.textContent = "{{ _('No wines selected.') }}";
         exportButton.disabled = true;
         batchButton.disabled = true;
         createWineListButton.disabled = true;
@@ -221,12 +214,6 @@ function updateSummary() {
         acceptQtyLabel.style.visibility = 'visible';
         footerBar.classList.add('visible');
     }
-}
-else {
-        summary.textContent = "titi";
-
-}
-
 }
 
 // Disable checkboxes if item status is not "created"
