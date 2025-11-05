@@ -1,0 +1,293 @@
+{% extends "inventory/base.html" %}
+{% load i18n %}
+
+{% block title %}Wine List — {{ wine_list.uuid }}{% endblock %}
+
+{% block style %}
+<style>
+    .wine-list-header {
+        background: #e8e8e8;
+        padding: 12px 24px;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .wine-list-header h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .wine-list-header .status {
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+        background: #f9f9f9;
+        padding: 6px 12px;
+        border-radius: 6px;
+    }
+
+    .accept-qty {
+        visibility: hidden;
+    }
+
+    .wine-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+    }
+
+    .wine-table th, .wine-table td {
+        padding: 10px 16px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .wine-table th {
+        background: #fafafa;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .wine-table tr:hover {
+        background: #f6f6f6;
+    }
+
+    .footer-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0; right: 0;
+        background: #ffffff;
+        border-top: 1px solid #e0e0e0;
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+        z-index: 100;
+    }
+
+    .footer-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .footer-actions button {
+        background: #007bff;
+        color: white;
+        padding: 8px 16px;
+        font-size: 14px;
+        border-radius: 4px;
+        text-decoration: none;
+        border: none; cursor: pointer;
+    }
+
+    .footer-actions button:hover {
+        background: #0056b3;
+    }
+
+    .footer-actions button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wine-list-header">
+    <h2>{% trans "Wine List" %} : {{ wine_list.name|default:wine_list.uuid }}</h2>
+    <div class="status">
+        {% trans "Status" %} : {{ wine_list.get_status_display }}
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="wine-table" id="wineListTable">
+        <thead>
+            <tr>
+                <th>{% trans "Name" %}</th>
+                <th>{% trans "Vintage" %}</th>
+                <th>{% trans "Category" %}</th>
+                <th>{% trans "Region" %}</th>
+                <!-- <th>{% trans "Appellation" %}</th> -->
+                <th>{% trans "Bottle Size (cl)" %}</th>
+                <th>{% trans "Price (€)" %}</th>
+                <th>{% trans "Offer Qty" %}</th>
+                <th>{% trans "Order Qty" %}</th>
+                <th class="row-select" style="width: 10px;">
+                    <input type="checkbox" id="selectAll" {% if wine_list.status != "created" %}disabled{% endif %}></th>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in display_items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.vintage|default:"—" }}</td>
+                <td>{{ item.category|title }}</td>
+                <td>{{ item.region|default:"—" }}</td>
+                <!-- <td>{{ item.appellation|default:"—" }}</td> -->
+                <td>{{ item.bottle_size }}</td>
+                <td>{{ item.offer_price|floatformat:0 }}</td>
+                <td>{{ item.offer_qty }}</td>
+                <td>
+                    {% if wine_list.status == "created" %}
+                    <input type="number"
+                           min="1"
+                           max="{{ item.offer_qty }}"
+                           placeholder="{{ item.offer_qty }}"
+                           class="input-qty"
+                           value="{{ item.accept_qty|default:'' }}">
+                    {% else %}
+                    {{ item.accept_qty|default:0 }}
+                    {% endif %}
+                </td>
+                <td class="row-select" style="width: 10px;">
+                    <input type="checkbox"
+                           class="wine-checkbox"
+                           value="{{ item.id }}"
+                           data-stock="{{ item.offer_qty }}"
+                           data-price="{{ item.offer_price }}"
+                           {% if wine_list.status != "created" %}disabled{% endif %}>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" style="text-align:center; color:#999;">{% trans "No wines in this list." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="footer-bar" id="footerBar">
+    <div id="selectionSummary">{% trans "No wines selected." %}</div>
+    <div class="footer-actions">
+        {% if wine_list.status == "created" %}
+            <button id="submitButton">{% trans "Submit Wine List" %}</button>
+        {% elif wine_list.status == "submitted" %}
+            <button disabled>{% trans "Awaiting Payment" %}</button>
+        {% elif wine_list.status == "confirmed" %}
+            <button disabled>{% trans "Pending Delivery" %}</button>
+        {% elif wine_list.status == "delivered" %}
+            <button disabled>{% trans "Delivered" %}</button>
+        {% elif wine_list.status == "finalized" %}
+            <button disabled>{% trans "Finalized" %}</button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Grab elements
+const checkboxes = document.querySelectorAll('.wine-checkbox');
+const selectAll = document.getElementById('selectAll');
+const summary = document.getElementById('selectionSummary');
+
+function updateSummary() {
+    let totalQty = 0, totalValue = 0, selectedCount = 0;
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            selectedCount++;
+            const tr = cb.closest('tr');
+            const qtyInput = tr.querySelector('.input-qty'); // find input in row
+            let qty = parseInt(qtyInput.value) || parseInt(cb.dataset.stock);
+            if (qty > parseInt(cb.dataset.stock)) qty = parseInt(cb.dataset.stock);
+            qtyInput.value = qty;
+            totalQty += qty;
+            totalValue += qty * parseFloat(cb.dataset.price || 0);
+        }
+    });
+
+    if (selectedCount === 0) {
+        summary.textContent = "{{ _('No wines selected.') }}";
+        exportButton.disabled = true;
+        batchButton.disabled = true;
+        createWineListButton.disabled = true;
+        acceptQtyLabel.style.visibility = 'hidden';
+        footerBar.classList.remove('visible');
+    } else {
+        summary.textContent = `${selectedCount} selected | ${totalQty} bottles | €${totalValue.toFixed(0)}`;
+        exportButton.disabled = false;
+        batchButton.disabled = false;
+        createWineListButton.disabled = false;
+        acceptQtyLabel.style.visibility = 'visible';
+        footerBar.classList.add('visible');
+    }
+}
+
+// Disable checkboxes if item status is not "created"
+if ("{{ wine_list.status }}" == "created") {
+    const submitButton = document.getElementById('submitButton');
+
+    document.querySelectorAll('.input-qty').forEach(input => input.addEventListener('input', updateSummary));
+    
+    checkboxes.forEach(cb => cb.addEventListener('change', () => {
+        const tr = cb.closest('tr');
+        const qtyInput = tr.querySelector('.input-qty'); // find input in row
+        // const qtyInput = cb.previousElementSibling;
+        if (cb.checked) {
+            qtyInput.style.visibility = 'visible';
+            if (!qtyInput.value) qtyInput.value = qtyInput.placeholder;
+        } else {
+            qtyInput.style.visibility = 'hidden';
+            qtyInput.value = '';
+        }
+        updateSummary();
+    }));
+
+    // Select All logic
+    selectAll.addEventListener('change', () => {
+        checkboxes.forEach(cb => {
+            if (cb.disabled) return; // ⬅️ skip disabled rows
+            cb.checked = selectAll.checked;
+            const tr = cb.closest('tr');
+            const qtyInput = tr.querySelector('.input-qty'); // find input in row
+            // const qtyInput = cb.previousElementSibling;
+            qtyInput.style.visibility = selectAll.checked ? 'visible' : 'hidden';
+            if (selectAll.checked && !qtyInput.value) qtyInput.value = qtyInput.placeholder;
+            if (!selectAll.checked) qtyInput.value = '';
+        });
+        updateSummary();
+    });
+
+    // Submit wine list with accept quantities
+    submitButton.addEventListener('click', async () => {
+        if (!confirm("Submit this wine list?")) return;
+
+        const selected = Array.from(checkboxes)
+            .filter(cb => cb.checked)
+            .map(cb => {
+                const tr = cb.closest('tr');
+                const qtyInput = tr.querySelector('.input-qty');
+                return { item_id: cb.value, accept_qty: parseInt(qtyInput.value) || 0 };
+            });
+
+        if (selected.length === 0) {
+            alert("Please select at least one wine.");
+            return;
+        }
+
+        try {
+            const res = await fetch("{% url 'amend_wine_list' wine_list.uuid %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ items: selected })
+            });
+            const data = await res.json();
+            if (data.success) location.reload();
+            else alert("Failed to submit wine list.");
+        } catch (err) {
+            console.error(err);
+            alert("Error submitting wine list.");
+        }
+    });
+
+    // Initialize button state
+    updateSummary();
+}
+</script>
+{% endblock %}

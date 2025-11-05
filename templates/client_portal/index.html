@@ -1,0 +1,203 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wine List Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .search-container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .logo {
+            margin-bottom: 30px;
+            font-size: 3rem;
+            color: #8B0000;
+            font-weight: bold;
+        }
+
+        .search-form {
+            width: 100%;
+            max-width: 584px;
+            margin: 0 auto;
+        }
+
+        .search-input-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 44px;
+            padding: 0 20px;
+            font-size: 16px;
+            border: 1px solid #dfe1e5;
+            border-radius: 24px;
+            outline: none;
+            box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            box-shadow: 0 1px 10px rgba(32, 33, 36, 0.35);
+            border-color: rgba(223, 225, 229, 0);
+        }
+
+        .search-button {
+            background-color: #8B0000;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .search-button:hover {
+            background-color: #A52A2A;
+        }
+
+        .search-button:active {
+            background-color: #660000;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            color: #70757a;
+            font-size: 14px;
+        }
+
+        /* Loading animation */
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8B0000;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error message */
+        .error-message {
+            color: #d93025;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-container">
+        <div class="logo">🍷 WineList</div>
+        
+        <form method="POST" action="" class="search-form" id="wineListSearchForm">
+            {% csrf_token %}
+            
+            <div class="search-input-container">
+                <input 
+                    type="text" 
+                    name="wine_list_uuid" 
+                    class="search-input" 
+                    placeholder="{% trans 'Enter Wine List UUID...' %}"
+                    value="{{ wine_list_uuid|default:'' }}"
+                    autocomplete="off"
+                    autofocus
+                    required
+                >
+            </div>
+
+            <button type="submit" class="search-button">Search Wine List</button>
+        </form>
+
+        <!-- Loading indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p>Searching for wine list...</p>
+        </div>
+
+        <!-- Error message -->
+        <div class="error-message" id="errorMessage">
+            Please enter a valid Wine List ID
+        </div>
+
+        <div class="instructions">
+            Enter the ID of the wine list you want to view
+        </div>
+    </div>
+
+<script>
+document.getElementById('wineListSearchForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // prevent immediate submission
+
+    const input = document.querySelector('.search-input');
+    const id = input.value.trim();
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const errorMessage = document.getElementById('errorMessage');
+
+    errorMessage.style.display = 'none';
+
+    // Validate
+    if (!id) {
+        errorMessage.style.display = 'block';
+        return;
+    }
+
+    // Validate UUID format (optional, but recommended)
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(id)) {
+        errorMessage.textContent = "{% trans 'Please enter a valid Wine List ID (UUID format)' %}";
+        errorMessage.style.display = 'block';
+        return;
+    }
+
+    // Build the URL cleanly
+    // const targetUrl = `/winelist/${encodeURIComponent(id)}/`;
+
+    setTimeout(() => {
+        window.location.href = `/winelist/${encodeURIComponent(id)}/`; // ← include trailing slash
+    }, 200);
+});
+</script>
+
+<!-- Display messages if any -->
+{% if messages %}
+    <div style="position: fixed; top: 20px; right: 20px;">
+        {% for message in messages %}
+            <div style="background: #f8d7da; color: #721c24; padding: 10px; margin: 5px; border-radius: 4px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+</body>
+</html>

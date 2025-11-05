@@ -18,10 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 
+from .settings import DEBUG
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', RedirectView.as_view(url='/login/', permanent=False)),  # 👈 redirect root to login
-    path('', include('inventory.urls')),
+    # path('', RedirectView.as_view(url='/login/', permanent=False)),  # 👈 redirect root to login
+    path('', include('client_portal.urls')),
+    path('admin/', include('inventory.urls')),
 ]
 
 LOGIN_URL = '/login/'

@@ -14,8 +14,8 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from client_portal.serializers import WineItemSerializer
 from .models import Wine, WineInventory, STATUS_CHOICES, WineItem, WineList
-from .serializers import WineItemSerializer
 
 
 def login_view(request):
@@ -248,7 +248,8 @@ def wine_list_view(request, uuid):
 
 
 @csrf_exempt  # if using JSON and fetch, csrf token header is sent anyway
-def submit_wine_list(request, uuid):
+@login_required
+def amend_wine_list(request, uuid):
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
 

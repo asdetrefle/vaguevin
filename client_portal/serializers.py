@@ -1,3 +1,4 @@
+
 class WineItemSerializer:
     def __init__(self, item):
         self.id = item.id                    # WineItem ID
@@ -14,3 +15,4 @@ class WineItemSerializer:
 
     def to_dict(self):
         return self.__dict__
+    
