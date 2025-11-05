@@ -49,6 +49,7 @@ CATEGORY_CHOICES = [
 # Status Choices (optional)
 # -----------------------------------
 STATUS_CHOICES = [
+    ('proposed', _('Proposed')),
     ('in_bond', _('In Bond')),
     ('in_stock', _('In Stock')),
     ('reserved', _('Reserved')),
